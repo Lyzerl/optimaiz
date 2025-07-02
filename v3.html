@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת אופטימיזציה לקייטרינג v3.0</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useCallback, useEffect } = React;
+
+        // אייקונים פשוטים
+        const Upload = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7,10 12,15 17,10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+        );
+
+        const FileText = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14,2 L14,8 L20,8 M14,2 L20,8 L20,20 C20,21 19,22 18,22 L6,22 C5,22 4,21 4,20 L4,4 C4,3 5,2 6,2 L14,2 Z" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <line x1="10" y1="9" x2="8" y2="9" />
+            </svg>
+        );
+
+        const Calculator = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="4" y="2" width="16" height="20" rx="2" />
+                <line x1="8" y1="6" x2="16" y2="6" />
+                <line x1="8" y1="10" x2="16" y2="10" />
+                <line x1="8" y1="14" x2="16" y2="14" />
+                <line x1="8" y1="18" x2="16" y2="18" />
+            </svg>
+        );
+
+        const Package = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" />
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                <polyline points="3.27,6.96 12,12.01 20.73,6.96" />
+                <line x1="12" y1="22.08" x2="12" y2="12" />
+            </svg>
+        );
+
+        const AlertCircle = () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+        );
+
+        const Settings = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+        );
+
+        const Save = () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <polyline points="17,21 17,13 7,13 7,21" />
+                <polyline points="7,3 7,8 15,8" />
+            </svg>
+        );
+
+        const Trash2 = () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3,6 5,6 21,6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                <line x1="10" y1="11" x2="10" y2="17" />
+                <line x1="14" y1="11" x2="14" y2="17" />
+            </svg>
+        );
+
+        const Tag = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                <line x1="7" y1="7" x2="7.01" y2="7" />
+            </svg>
+        );
+
+        const CateringOptimizer = () => {
+            const [orders, setOrders] = useState([]);
+            const [productWeights, setProductWeights] = useState({});
+            const [results, setResults] = useState([]);
+            const [fileName, setFileName] = useState('');
+            const [activeTab, setActiveTab] = useState('upload');
+
+            // אופטימיזציה מתוקנת
+            const optimizePackaging = (portions) => {
+                if (portions <= 0) return { packs5: 0, packs7: 0, waste: 0 };
+                
+                let bestSolution = { packs5: Math.ceil(portions / 5), packs7: 0, waste: Math.ceil(portions / 5) * 5 - portions };
+                
+                // בדוק כל האפשרויות של אריזות 7 (כולל יותר מהנדרש)
+                for (let packs7 = 0; packs7 <= Math.ceil(portions / 7) + 1; packs7++) {
+                    const remaining = portions - (packs7 * 7);
+                    
+                    if (remaining < 0) {
+                        // אם יש עודף באריזות 7
+                        const waste = Math.abs(remaining);
+                        if (waste < bestSolution.waste) {
+                            bestSolution = { packs5: 0, packs7, waste };
+                        }
+                    } else {
+                        // אם צריך אריזות 5 נוספות
+                        const packs5 = remaining > 0 ? Math.ceil(remaining / 5) : 0;
+                        const totalProvided = (packs7 * 7) + (packs5 * 5);
+                        const waste = totalProvided - portions;
+                        
+                        if (waste < bestSolution.waste) {
+                            bestSolution = { packs5, packs7, waste };
+                        }
+                    }
+                }
+                
+                return bestSolution;
+            };
+
+            // נקה הכל כשמעלים קובץ חדש
+            const handleFileUpload = useCallback(async (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                // נקה נתונים קודמים
+                setResults([]);
+                setActiveTab('upload');
+                setFileName(file.name);
+                
+                try {
+                    const data = await file.arrayBuffer();
+                    const workbook = XLSX.read(data);
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                    // נקה את השמות של העמודות
+                    const cleanedData = jsonData.map(row => {
+                        const cleanedRow = {};
+                        Object.keys(row).forEach(key => {
+                            const cleanKey = key.trim();
+                            cleanedRow[cleanKey] = row[key];
+                        });
+                        return cleanedRow;
+                    });
+
+                    setOrders(cleanedData);
+                    
+                    // יצירת רשימת מוצרים ייחודיים
+                    const uniqueProducts = [...new Set(cleanedData.map(order => {
+                        const productField = Object.keys(order).find(key => 
+                            key.includes('מוצר') || key.includes('פריט') || key.includes('product') || key.includes('item')
+                        );
+                        return productField ? order[productField] : '';
+                    }).filter(Boolean))];
+
+                    // שמור את המוצרים הקיימים והוסף חדשים
+                    const updatedWeights = { ...productWeights };
+                    uniqueProducts.forEach(product => {
+                        if (!updatedWeights[product]) {
+                            updatedWeights[product] = 100; // 100 גרם ברירת מחדל
+                        }
+                    });
+                    setProductWeights(updatedWeights);
+
+                } catch (error) {
+                    alert('שגיאה בקריאת הקובץ: ' + error.message);
+                }
+            }, [productWeights]);
+
+            const updateProductWeight = (product, weight) => {
+                setProductWeights(prev => ({
+                    ...prev,
+                    [product]: parseFloat(weight) || 0
+                }));
+            };
+
+            const calculateResults = () => {
+                const calculatedResults = orders.map((order, index) => {
+                    // מצא את השדות הרלוונטיים
+                    const customerNameField = Object.keys(order).find(key => {
+                        const lowerKey = key.toLowerCase().trim();
+                        return lowerKey === 'תיאור אתר' ||
+                               lowerKey === 'תיאור_אתר' ||
+                               lowerKey === 'שם לקוח' || 
+                               lowerKey === 'שם_לקוח' ||
+                               lowerKey === 'שם לקוח:' ||
+                               (lowerKey.includes('שם') && lowerKey.includes('לקוח')) ||
+                               lowerKey === 'customer_name' ||
+                               lowerKey === 'customer name' ||
+                               lowerKey === 'client_name' ||
+                               (lowerKey.includes('שם') && !lowerKey.includes('סוג') && !lowerKey.includes('מספר'));
+                    });
+
+                    const siteDescriptionField = Object.keys(order).find(key => {
+                        const lowerKey = key.toLowerCase().trim();
+                        return lowerKey === 'תאור האתר' ||
+                               lowerKey === 'תיאור האתר' ||
+                               lowerKey === 'תיאור_האתר' ||
+                               lowerKey === 'תאור_האתר' ||
+                               lowerKey === 'תיאור לקוח' ||
+                               lowerKey === 'תיאור_לקוח' ||
+                               lowerKey === 'תאור לקוח' ||
+                               lowerKey === 'תאור_לקוח' ||
+                               lowerKey === 'site_description';
+                    });
+
+                    const customerNumberField = Object.keys(order).find(key => {
+                        const lowerKey = key.toLowerCase().trim();
+                        return lowerKey === 'מספר לקוח' || 
+                               lowerKey === 'מס לקוח' ||
+                               lowerKey === 'מס\' לקוח' ||
+                               lowerKey === 'customer_id' ||
+                               lowerKey === 'customer id' ||
+                               (lowerKey.includes('מספר') && lowerKey.includes('לקוח'));
+                    });
+
+                    const productField = Object.keys(order).find(key => 
+                        key.includes('מוצר') || key.includes('פריט') || key.includes('product') || key.includes('item')
+                    );
+
+                    const weightField = Object.keys(order).find(key => 
+                        key.includes('משקל') || key.includes('כמות') || key.includes('weight') || key.includes('quantity')
+                    );
+
+                    const portionsField = Object.keys(order).find(key => {
+                        const lowerKey = key.toLowerCase().trim();
+                        return lowerKey === 'מספר מנות' || 
+                               lowerKey === 'מס מנות' ||
+                               lowerKey === 'כמות מנות' ||
+                               lowerKey === 'מנות' ||
+                               (lowerKey.includes('מספר') && lowerKey.includes('מנות')) ||
+                               (lowerKey.includes('כמות') && lowerKey.includes('מנות')) ||
+                               lowerKey === 'portions' ||
+                               lowerKey === 'servings';
+                    });
+
+                    const customerName = customerNameField ? order[customerNameField] : 'לא זוהה';
+                    const siteDescription = siteDescriptionField ? order[siteDescriptionField] : '';
+                    const customerNumber = customerNumberField ? order[customerNumberField] : '';
+                    const product = productField ? order[productField] : 'לא זוהה';
+                    const totalWeightKg = weightField ? parseFloat(order[weightField]) || 0 : 0;
+                    const totalWeight = totalWeightKg * 1000;
+                    const portionWeight = productWeights[product] || 100;
+                    const portions = Math.ceil(totalWeight / portionWeight);
+                    const originalPortions = portionsField ? parseFloat(order[portionsField]) || 0 : null;
+                    
+                    const packaging = optimizePackaging(portions);
+
+                    return {
+                        customerName,
+                        siteDescription,
+                        customerNumber,
+                        product,
+                        totalWeightKg,
+                        totalWeight,
+                        portionWeight,
+                        portions,
+                        originalPortions,
+                        ...packaging,
+                        totalPacks: packaging.packs5 + packaging.packs7
+                    };
+                });
+
+                setResults(calculatedResults);
+                setActiveTab('results');
+            };
+
+            const getTotalSummary = () => {
+                if (results.length === 0) return null;
+                
+                const totals = results.reduce((acc, result) => {
+                    acc.totalPortions += result.portions;
+                    acc.totalPacks5 += result.packs5;
+                    acc.totalPacks7 += result.packs7;
+                    acc.totalWaste += result.waste;
+                    return acc;
+                }, { totalPortions: 0, totalPacks5: 0, totalPacks7: 0, totalWaste: 0 });
+
+                return totals;
+            };
+
+            const exportResults = () => {
+                if (results.length === 0) return;
+
+                const exportData = results.map(result => ({
+                    'שם לקוח': result.customerName,
+                    'תיאור לקוח': result.siteDescription,
+                    ...(result.originalPortions !== null && { 'מספר מנות מקור': result.originalPortions }),
+                    'מספר לקוח': result.customerNumber,
+                    'מוצר': result.product,
+                    'משקל כולל (ק"ג)': result.totalWeightKg,
+                    'משקל מנה (גרם)': result.portionWeight,
+                    'כמות מנות': result.portions,
+                    'אריזות 5 מנות': result.packs5,
+                    'אריזות 7 מנות': result.packs7,
+                    'סה"כ אריזות': result.totalPacks,
+                    'פחת (מנות)': result.waste
+                }));
+
+                const worksheet = XLSX.utils.json_to_sheet(exportData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'תוצאות אופטימיזציה');
+                XLSX.writeFile(workbook, 'תוצאות_קייטרינג.xlsx');
+            };
+
+            const exportLabels = () => {
+                if (results.length === 0) {
+                    alert('אין תוצאות לייצוא. חשב תוצאות תחילה.');
+                    return;
+                }
+
+                // יצירת מערך מדבקות
+                const labels = [];
+                results.forEach(result => {
+                    // הוסף מדבקות לאריזות 5
+                    for (let i = 0; i < result.packs5; i++) {
+                        labels.push({
+                            customer: result.customerName,
+                            siteDescription: result.siteDescription,
+                            product: result.product,
+                            packType: '5 מנות',
+                            packNumber: i + 1,
+                            totalPacks: result.packs5,
+                            originalPortions: result.originalPortions,
+                            totalPacks5: result.packs5,
+                            totalPacks7: result.packs7
+                        });
+                    }
+                    
+                    // הוסף מדבקות לאריזות 7
+                    for (let i = 0; i < result.packs7; i++) {
+                        labels.push({
+                            customer: result.customerName,
+                            siteDescription: result.siteDescription,
+                            product: result.product,
+                            packType: '7 מנות',
+                            packNumber: i + 1,
+                            totalPacks: result.packs7,
+                            originalPortions: result.originalPortions,
+                            totalPacks5: result.packs5,
+                            totalPacks7: result.packs7
+                        });
+                    }
+                });
+
+                if (labels.length === 0) {
+                    alert('אין מדבקות ליצירה. בדוק שיש אריזות בתוצאות.');
+                    return;
+                }
+
+                // פתרון HTML + הדפסה
+                let htmlContent = `
+                    <!DOCTYPE html>
+                    <html dir="rtl">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>מדבקות קייטרינג</title>
+                        <style>
+                            @page { size: A4; margin: 5mm; }
+                            body { margin: 0; font-family: Arial, sans-serif; }
+                            .page { width: 210mm; height: 297mm; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(8, 1fr); gap: 1mm; }
+                            .label { 
+                                border: 1px solid #ccc; 
+                                padding: 2mm; 
+                                display: flex; 
+                                flex-direction: column; 
+                                justify-content: space-between;
+                                text-align: right;
+                                font-size: 9pt;
+                                page-break-inside: avoid;
+                                box-sizing: border-box;
+                                height: 35mm;
+                                width: 52mm;
+                                overflow: hidden;
+                            }
+                            .customer { font-weight: bold; font-size: 10pt; margin-bottom: 1mm; line-height: 1.1; }
+                            .product { color: #666; margin-bottom: 1mm; font-size: 8pt; line-height: 1.1; }
+                            .pack-type { 
+                                text-align: center; 
+                                font-weight: bold; 
+                                font-size: 8pt; 
+                                background: #e8f4fd; 
+                                padding: 1mm; 
+                                border: 1px solid #2563eb; 
+                                border-radius: 2mm; 
+                                margin: 1mm 0;
+                            }
+                            .footer { display: flex; justify-content: space-between; font-size: 7pt; align-items: end; }
+                            .pack-num { font-weight: bold; background: #f3f4f6; padding: 1mm; border-radius: 2mm; font-size: 8pt; }
+                            .pack-info { font-size: 12pt; color: #333; line-height: 1.1; font-weight: bold; }
+                            @media print { .page { page-break-after: always; } }
+                        </style>
+                    </head>
+                    <body>
+                `;
+
+                // חלק למדבקות בדפים
+                for (let i = 0; i < labels.length; i += 32) {
+                    const pageLabels = labels.slice(i, i + 32);
+                    htmlContent += '<div class="page">';
+                    
+                    // הוסף מדבקות לדף
+                    pageLabels.forEach(label => {
+                        const customerText = label.customer.length > 18 ? label.customer.substring(0, 15) + '...' : label.customer;
+                        const siteText = label.siteDescription && label.siteDescription.length > 20 ? 
+                            label.siteDescription.substring(0, 17) + '...' : (label.siteDescription || '');
+                        const productText = label.product.length > 22 ? label.product.substring(0, 19) + '...' : label.product;
+                        
+                        // יצירת טקסט אריזות - רק אריזות שקיימות
+                        let packagesText = '';
+                        if (label.totalPacks5 > 0 && label.totalPacks7 > 0) {
+                            packagesText = `אריזת 5: ${label.totalPacks5} יח'<br/>אריזת 7: ${label.totalPacks7} יח'`;
+                        } else if (label.totalPacks5 > 0) {
+                            packagesText = `אריזת 5: ${label.totalPacks5} יחידות`;
+                        } else if (label.totalPacks7 > 0) {
+                            packagesText = `אריזת 7: ${label.totalPacks7} יחידות`;
+                        }
+                        
+                        htmlContent += `
+                            <div class="label">
+                                <div style="flex: 1;">
+                                    <div class="customer">${customerText}</div>
+                                    ${siteText ? `<div style="font-size: 7pt; color: #888; margin-bottom: 0.5mm; line-height: 1;">${siteText}</div>` : ''}
+                                    <div class="product">${productText}</div>
+                                </div>
+                                
+                                <div class="pack-type">${label.packType}</div>
+                                
+                                <div class="footer">
+                                    <div class="pack-info">
+                                        ${packagesText}<br/>
+                                        <span style="font-size: 6pt; color: #666;">${new Date().toLocaleDateString('he-IL')}</span>
+                                    </div>
+                                    <div class="pack-num">${label.packNumber}/${label.totalPacks}</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    // הוסף תאים ריקים להשלמת הדף
+                    for (let j = pageLabels.length; j < 32; j++) {
+                        htmlContent += '<div class="label" style="border-color: #eee;"></div>';
+                    }
+                    
+                    htmlContent += '</div>';
+                }
+
+                htmlContent += '</body></html>';
+
+                // פתח חלון חדש עם המדבקות
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(htmlContent);
+                printWindow.document.close();
+                
+                // המתן להטענה ואז הצג דיאלוג הדפסה
+                printWindow.onload = function() {
+                    setTimeout(() => {
+                        printWindow.print();
+                    }, 500);
+                };
+            };
+
+            const addNewProduct = () => {
+                const productName = prompt('הכנס שם מוצר חדש:');
+                if (productName && productName.trim()) {
+                    setProductWeights(prev => ({
+                        ...prev,
+                        [productName.trim()]: 100
+                    }));
+                }
+            };
+
+            const deleteProduct = (productToDelete) => {
+                if (confirm(`האם אתה בטוח שברצונך למחוק את המוצר "${productToDelete}"?`)) {
+                    const updatedWeights = { ...productWeights };
+                    delete updatedWeights[productToDelete];
+                    setProductWeights(updatedWeights);
+                }
+            };
+
+            const totals = getTotalSummary();
+
+            return (
+                <div className="max-w-6xl mx-auto p-6 bg-white" dir="rtl">
+                    <div className="mb-8 text-center">
+                        <h1 className="text-3xl font-bold text-gray-800 mb-2">מערכת אופטימיזציה לקייטרינג v3.0</h1>
+                        <p className="text-gray-600">העלה קובץ אקסל, נהל מוצרים וקבל אופטימיזציה של אריזות</p>
+                    </div>
+
+                    {/* תפריט טאבים */}
+                    <div className="mb-6 border-b border-gray-200">
+                        <nav className="flex space-x-8 space-x-reverse">
+                            <button
+                                onClick={() => setActiveTab('upload')}
+                                className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center ${
+                                    activeTab === 'upload'
+                                        ? 'border-blue-500 text-blue-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                            >
+                                <Upload />
+                                <span className="mr-1">העלאת קובץ</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('management')}
+                                className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center ${
+                                    activeTab === 'management'
+                                        ? 'border-blue-500 text-blue-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                            >
+                                <Settings />
+                                <span className="mr-1">ניהול מוצרים</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('results')}
+                                className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center ${
+                                    activeTab === 'results'
+                                        ? 'border-blue-500 text-blue-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                                disabled={results.length === 0}
+                            >
+                                <Package />
+                                <span className="mr-1">תוצאות</span>
+                            </button>
+                        </nav>
+                    </div>
+
+                    {/* טאב העלאת קובץ */}
+                    {activeTab === 'upload' && (
+                        <>
+                            <div className="mb-8 p-6 border-2 border-dashed border-gray-300 rounded-lg">
+                                <div className="text-center">
+                                    <div className="mx-auto h-12 w-12 text-gray-400 mb-4 flex justify-center items-center">
+                                        <Upload />
+                                    </div>
+                                    <label htmlFor="file-upload" className="cursor-pointer">
+                                        <span className="text-lg font-medium text-blue-600 hover:text-blue-500">
+                                            העלה קובץ אקסל
+                                        </span>
+                                        <input
+                                            id="file-upload"
+                                            type="file"
+                                            className="hidden"
+                                            accept=".xlsx,.xls"
+                                            onChange={handleFileUpload}
+                                        />
+                                    </label>
+                                    {fileName && (
+                                        <p className="mt-2 text-sm text-gray-500">קובץ נטען: {fileName}</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {Object.keys(productWeights).length > 0 && (
+                                <div className="mb-8 bg-gray-50 p-6 rounded-lg">
+                                    <h2 className="text-xl font-semibold mb-4 flex items-center">
+                                        <Calculator />
+                                        <span className="mr-2">הגדרת משקל מנה (גרם)</span>
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {Object.keys(productWeights).map(product => (
+                                            <div key={product} className="flex items-center space-x-2 space-x-reverse">
+                                                <label className="flex-1 text-sm font-medium text-gray-700">
+                                                    {product}:
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={productWeights[product]}
+                                                    onChange={(e) => updateProductWeight(product, e.target.value)}
+                                                    className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
+                                                    min="1"
+                                                />
+                                                <span className="text-xs text-gray-500">גרם</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button
+                                        onClick={calculateResults}
+                                        className="mt-4 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors"
+                                    >
+                                        חשב תוצאות
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {/* טאב ניהול מוצרים */}
+                    {activeTab === 'management' && (
+                        <div className="mb-8">
+                            <div className="bg-white p-6 rounded-lg border">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-xl font-semibold flex items-center">
+                                        <Settings />
+                                        <span className="mr-2">ניהול מוצרים</span>
+                                    </h2>
+                                    <div className="space-x-2 space-x-reverse">
+                                        <button
+                                            onClick={addNewProduct}
+                                            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors"
+                                        >
+                                            הוסף מוצר
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {Object.keys(productWeights).length === 0 ? (
+                                    <div className="text-center py-8 text-gray-500">
+                                        <div className="mx-auto h-12 w-12 text-gray-300 mb-4 flex justify-center items-center">
+                                            <Settings />
+                                        </div>
+                                        <p>עדיין לא הוגדרו מוצרים</p>
+                                        <p className="text-sm">העלה קובץ אקסל או הוסף מוצר ידנית</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {Object.entries(productWeights).map(([product, weight]) => (
+                                            <div key={product} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                                <div className="flex items-center space-x-4 space-x-reverse flex-1">
+                                                    <span className="font-medium text-gray-800 flex-1">{product}</span>
+                                                    <div className="flex items-center space-x-2 space-x-reverse">
+                                                        <input
+                                                            type="number"
+                                                            value={weight}
+                                                            onChange={(e) => updateProductWeight(product, e.target.value)}
+                                                            className="w-24 px-3 py-2 border border-gray-300 rounded text-center"
+                                                            min="1"
+                                                        />
+                                                        <span className="text-sm text-gray-600">גרם</span>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => deleteProduct(product)}
+                                                    className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50 transition-colors"
+                                                >
+                                                    <Trash2 />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* טאב תוצאות */}
+                    {activeTab === 'results' && results.length > 0 && (
+                        <div className="mb-8">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-semibold flex items-center">
+                                    <Package />
+                                    <span className="mr-2">תוצאות אופטימיזציה</span>
+                                </h2>
+                                <div className="space-x-2 space-x-reverse">
+                                    <button
+                                        onClick={exportResults}
+                                        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors flex items-center"
+                                    >
+                                        <FileText />
+                                        <span className="mr-2">ייצא לאקסל</span>
+                                    </button>
+                                    <button
+                                        onClick={exportLabels}
+                                        className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition-colors flex items-center"
+                                    >
+                                        <Tag />
+                                        <span className="mr-2">ייצא מדבקות PDF</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {totals && (
+                                <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                                    <h3 className="font-semibold text-blue-800 mb-2">סיכום כללי:</h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                        <div>
+                                            <span className="text-blue-700">סה"כ מנות: </span>
+                                            <span className="font-bold">{totals.totalPortions}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-blue-700">אריזות 5: </span>
+                                            <span className="font-bold">{totals.totalPacks5}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-blue-700">אריזות 7: </span>
+                                            <span className="font-bold">{totals.totalPacks7}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-blue-700">פחת: </span>
+                                            <span className="font-bold text-red-600">{totals.totalWaste} מנות</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full bg-white border border-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">שם לקוח</th>
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">תיאור לקוח</th>
+                                            {results.some(r => r.originalPortions !== null) && (
+                                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">מספר מנות מקור</th>
+                                            )}
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">מספר לקוח</th>
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">מוצר</th>
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">משקל כולל (ק"ג)</th>
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">מנות</th>
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">אריזות 5</th>
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">אריזות 7</th>
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">פחת</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {results.map((result, index) => (
+                                            <tr key={index} className="hover:bg-gray-50">
+                                                <td className="px-4 py-3 text-sm text-gray-900">{result.customerName}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-600">{result.siteDescription || '-'}</td>
+                                                {results.some(r => r.originalPortions !== null) && (
+                                                    <td className="px-4 py-3 text-sm text-orange-600 font-medium">
+                                                        {result.originalPortions !== null ? result.originalPortions : '-'}
+                                                    </td>
+                                                )}
+                                                <td className="px-4 py-3 text-sm text-gray-600">{result.customerNumber}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900">{result.product}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900">{result.totalWeightKg}ק"ג</td>
+                                                <td className="px-4 py-3 text-sm font-medium text-gray-900">{result.portions}</td>
+                                                <td className="px-4 py-3 text-sm text-blue-600">{result.packs5}</td>
+                                                <td className="px-4 py-3 text-sm text-green-600">{result.packs7}</td>
+                                                <td className="px-4 py-3 text-sm text-red-600">
+                                                    {result.waste > 0 && (
+                                                        <span className="flex items-center">
+                                                            <AlertCircle />
+                                                            <span className="mr-1">{result.waste}</span>
+                                                        </span>
+                                                    )}
+                                                    {result.waste === 0 && "אין"}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* הוראות */}
+                    <div className="bg-gray-50 p-6 rounded-lg">
+                        <h3 className="font-semibold mb-2">איך להשתמש במערכת:</h3>
+                        <ol className="text-sm text-gray-600 space-y-1">
+                            <li>1. <strong>העלאת קובץ:</strong> העלה קובץ אקסל עם עמודות "תיאור אתר" (שם לקוח), "תאור האתר", "מספר לקוח", מוצר, משקל (בק"ג), ואופציונלי "מספר מנות"</li>
+                            <li>2. <strong>ניהול מוצרים:</strong> עבור לטאב "ניהול מוצרים" להוספה/עריכה/מחיקה של מוצרים</li>
+                            <li>3. <strong>חישוב:</strong> לחץ "חשב תוצאות" בטאב העלאת קובץ</li>
+                            <li>4. <strong>תוצאות:</strong> צפה בתוצאות בטאב "תוצאות", ייצא לאקסל או ייצא מדבקות</li>
+                        </ol>
+                        <p className="text-xs text-gray-500 mt-2">
+                            <strong>מדבקות:</strong> פותח חלון הדפסה חדש עם המדבקות - ניתן לשמור כ-PDF או להדפיס
+                        </p>
+                    </div>
+                </div>
+            );
+        };
+
+        // רנדור האפליקציה
+        ReactDOM.render(<CateringOptimizer />, document.getElementById('root'));
+    </script>
+</body>
+</html>
