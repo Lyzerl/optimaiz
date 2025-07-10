@@ -8,11 +8,34 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
+        @page { 
+            size: A4; 
+            margin: 0;
+        }
+        body { margin: 0; padding: 0; font-family: Arial, 'Noto Sans Hebrew', 'Segoe UI', sans-serif; }
+        .page {
+          width: 210mm;
+          height: 267mm;
+          margin-top: 1cm;
+          display: grid;
+          grid-template-columns: repeat(4, 52.5mm);
+          grid-template-rows: repeat(8, 33.375mm);
+          gap: 0;
+          padding: 0;
+          break-after: page;
+          page-break-after: always;
+        }
+        .label { border: 1px solid #333; padding: 2mm; display: flex; flex-direction: column; justify-content: space-between; text-align: right; font-size: 8pt; page-break-inside: avoid; box-sizing: border-box; background: white; overflow: hidden; width: 52.5mm; height: 34.625mm; }
+        .customer { font-weight: bold; font-size: 9pt; margin-bottom: 0.5mm; line-height: 1.1; word-wrap: break-word; overflow-wrap: break-word; }
+        .site { font-size: 7pt; color: #444; margin-bottom: 0.5mm; line-height: 1; word-wrap: break-word; overflow-wrap: break-word; }
+        .product { color: #666; margin-bottom: 1mm; font-size: 7pt; line-height: 1; word-wrap: break-word; overflow-wrap: break-word; }
+        .portions-info { text-align: center; font-weight: bold; font-size: 7pt; background: transparent; padding: 0.5mm; border: none; border-radius: 0; margin: 0.5mm 0; color: #666; }
     </style>
 </head>
 <body>
@@ -328,155 +351,125 @@
                     return;
                 }
 
-                // יצירת מערך מדבקות
-                const labels = [];
-                results.forEach(result => {
-                    // הוסף מדבקות לאריזות 5
-                    for (let i = 0; i < result.packs5; i++) {
-                        labels.push({
-                            customer: result.customerName,
-                            siteDescription: result.siteDescription,
-                            product: result.product,
-                            packType: '5 מנות',
-                            packNumber: i + 1,
-                            totalPacks: result.packs5,
-                            originalPortions: result.originalPortions,
-                            totalPacks5: result.packs5,
-                            totalPacks7: result.packs7
-                        });
-                    }
-                    
-                    // הוסף מדבקות לאריזות 7
-                    for (let i = 0; i < result.packs7; i++) {
-                        labels.push({
-                            customer: result.customerName,
-                            siteDescription: result.siteDescription,
-                            product: result.product,
-                            packType: '7 מנות',
-                            packNumber: i + 1,
-                            totalPacks: result.packs7,
-                            originalPortions: result.originalPortions,
-                            totalPacks5: result.packs5,
-                            totalPacks7: result.packs7
-                        });
-                    }
-                });
+                // יצירת מדבקה אחת לכל אתר (לא לכל קופסה)
+                const labels = results.map(result => ({
+                    customer: result.customerName,
+                    siteDescription: result.siteDescription,
+                    product: result.product,
+                    originalPortions: result.originalPortions,
+                    totalPacks5: result.packs5,
+                    totalPacks7: result.packs7,
+                    totalPacks: result.packs5 + result.packs7,
+                    totalWeightKg: result.totalWeightKg
+                }));
 
                 if (labels.length === 0) {
                     alert('אין מדבקות ליצירה. בדוק שיש אריזות בתוצאות.');
                     return;
                 }
 
-                // פתרון HTML + הדפסה
-                let htmlContent = `
-                    <!DOCTYPE html>
-                    <html dir="rtl">
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>מדבקות קייטרינג</title>
-                        <style>
-                            @page { size: A4; margin: 5mm; }
-                            body { margin: 0; font-family: Arial, sans-serif; }
-                            .page { width: 210mm; height: 297mm; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(8, 1fr); gap: 1mm; }
-                            .label { 
-                                border: 1px solid #ccc; 
-                                padding: 2mm; 
-                                display: flex; 
-                                flex-direction: column; 
-                                justify-content: space-between;
-                                text-align: right;
-                                font-size: 9pt;
-                                page-break-inside: avoid;
-                                box-sizing: border-box;
-                                height: 35mm;
-                                width: 52mm;
-                                overflow: hidden;
-                            }
-                            .customer { font-weight: bold; font-size: 10pt; margin-bottom: 1mm; line-height: 1.1; }
-                            .product { color: #666; margin-bottom: 1mm; font-size: 8pt; line-height: 1.1; }
-                            .pack-type { 
-                                text-align: center; 
-                                font-weight: bold; 
-                                font-size: 8pt; 
-                                background: #e8f4fd; 
-                                padding: 1mm; 
-                                border: 1px solid #2563eb; 
-                                border-radius: 2mm; 
-                                margin: 1mm 0;
-                            }
-                            .footer { display: flex; justify-content: space-between; font-size: 7pt; align-items: end; }
-                            .pack-num { font-weight: bold; background: #f3f4f6; padding: 1mm; border-radius: 2mm; font-size: 8pt; }
-                            .pack-info { font-size: 12pt; color: #333; line-height: 1.1; font-weight: bold; }
-                            @media print { .page { page-break-after: always; } }
-                        </style>
-                    </head>
-                    <body>
+                // צור HTML string עם CSS מוטמע
+                let html = `
+                  <style>
+                    @page { size: A4; margin: 1cm 0cm; }
+                    body { margin: 0; padding: 0; font-family: Arial, 'Noto Sans Hebrew', 'Segoe UI', sans-serif; }
+                    .page {
+                      width: 210mm;
+                      height: 277mm;
+                      display: grid;
+                      grid-template-columns: repeat(4, 52.5mm);
+                      grid-template-rows: repeat(8, 34.625mm);
+                      gap: 0;
+                      padding: 0;
+                      break-after: page;
+                      page-break-after: always;
+                    }
+                    .label { border: 1px solid #333; padding: 2mm; display: flex; flex-direction: column; justify-content: space-between; text-align: right; font-size: 8pt; page-break-inside: avoid; box-sizing: border-box; background: white; overflow: hidden; width: 52.5mm; height: 34.625mm; }
+                    .customer { font-weight: bold; font-size: 9pt; margin-bottom: 0.5mm; line-height: 1.1; word-wrap: break-word; overflow-wrap: break-word; }
+                    .site { font-size: 7pt; color: #444; margin-bottom: 0.5mm; line-height: 1; word-wrap: break-word; overflow-wrap: break-word; }
+                    .product { color: #666; margin-bottom: 1mm; font-size: 7pt; line-height: 1; word-wrap: break-word; overflow-wrap: break-word; }
+                    .portions-info { text-align: center; font-weight: bold; font-size: 7pt; background: transparent; padding: 0.5mm; border: none; border-radius: 0; margin: 0.5mm 0; color: #666; }
+                  </style>
                 `;
 
-                // חלק למדבקות בדפים
                 for (let i = 0; i < labels.length; i += 32) {
-                    const pageLabels = labels.slice(i, i + 32);
-                    htmlContent += '<div class="page">';
-                    
-                    // הוסף מדבקות לדף
-                    pageLabels.forEach(label => {
-                        const customerText = label.customer.length > 18 ? label.customer.substring(0, 15) + '...' : label.customer;
-                        const siteText = label.siteDescription && label.siteDescription.length > 20 ? 
-                            label.siteDescription.substring(0, 17) + '...' : (label.siteDescription || '');
-                        const productText = label.product.length > 22 ? label.product.substring(0, 19) + '...' : label.product;
-                        
-                        // יצירת טקסט אריזות - רק אריזות שקיימות
-                        let packagesText = '';
-                        if (label.totalPacks5 > 0 && label.totalPacks7 > 0) {
-                            packagesText = `אריזת 5: ${label.totalPacks5} יח'<br/>אריזת 7: ${label.totalPacks7} יח'`;
-                        } else if (label.totalPacks5 > 0) {
-                            packagesText = `אריזת 5: ${label.totalPacks5} יחידות`;
-                        } else if (label.totalPacks7 > 0) {
-                            packagesText = `אריזת 7: ${label.totalPacks7} יחידות`;
-                        }
-                        
-                        htmlContent += `
-                            <div class="label">
-                                <div style="flex: 1;">
-                                    <div class="customer">${customerText}</div>
-                                    ${siteText ? `<div style="font-size: 7pt; color: #888; margin-bottom: 0.5mm; line-height: 1;">${siteText}</div>` : ''}
-                                    <div class="product">${productText}</div>
-                                </div>
-                                
-                                <div class="pack-type">${label.packType}</div>
-                                
-                                <div class="footer">
-                                    <div class="pack-info">
-                                        ${packagesText}<br/>
-                                        <span style="font-size: 6pt; color: #666;">${new Date().toLocaleDateString('he-IL')}</span>
-                                    </div>
-                                    <div class="pack-num">${label.packNumber}/${label.totalPacks}</div>
-                                </div>
-                            </div>
-                        `;
-                    });
-
-                    // הוסף תאים ריקים להשלמת הדף
-                    for (let j = pageLabels.length; j < 32; j++) {
-                        htmlContent += '<div class="label" style="border-color: #eee;"></div>';
+                  html += `<div class="page" dir="rtl" style="direction:rtl;">`;
+                  const pageLabels = labels.slice(i, i + 32);
+                  pageLabels.forEach(label => {
+                    const customerText = label.customer || 'לא זוהה';
+                    const siteText = label.siteDescription || '';
+                    const productText = label.product || 'לא זוהה';
+                    const portionsText = label.originalPortions !== null ? 
+                        `${label.originalPortions} מנות` : 
+                        'כמות לא צוינה';
+                    let packagesText = '';
+                    if (label.totalPacks5 > 0 && label.totalPacks7 > 0) {
+                        packagesText = `${label.totalPacks5} אריזות של 5 + ${label.totalPacks7} אריזות של 7`;
+                    } else if (label.totalPacks5 > 0) {
+                        packagesText = `${label.totalPacks5} אריזות של 5 מנות`;
+                    } else if (label.totalPacks7 > 0) {
+                        packagesText = `${label.totalPacks7} אריזות של 7 מנות`;
                     }
-                    
-                    htmlContent += '</div>';
+                    html += `
+                      <div class="label">
+                        <div>
+                          <div class="customer">${customerText}</div>
+                          ${siteText ? `<div class="site">${siteText}</div>` : ''}
+                          <div class="product">${productText}</div>
+                        </div>
+                        <div class="portions-info">${portionsText}</div>
+                        <div style="text-align: center; margin: 0.5mm 0; font-size: 7pt; font-weight: bold;">
+                          משקל: ${(label.totalWeightKg || 0).toFixed(1)} ק"ג
+                        </div>
+                        <div style="border: 1px solid #333; margin: 0.5mm 0; flex: 1;">
+                          <table style="width: 100%; height: 100%; border-collapse: collapse; font-size: 7pt;">
+                            <tr style="background: #f0f0f0; height: 30%;">
+                              <td style="border-right: 1px solid #333; padding: 0.5mm; text-align: center; font-weight: bold;">5 מנות</td>
+                              <td style="padding: 0.5mm; text-align: center; font-weight: bold;">7 מנות</td>
+                            </tr>
+                            <tr style="height: 70%;">
+                              <td style="border-right: 1px solid #333; padding: 1mm; text-align: center; font-size: 11pt; font-weight: bold; vertical-align: middle;">${label.totalPacks5}</td>
+                              <td style="padding: 1mm; text-align: center; font-size: 11pt; font-weight: bold; vertical-align: middle;">${label.totalPacks7}</td>
+                            </tr>
+                          </table>
+                        </div>
+                      </div>
+                    `;
+                  });
+                  for (let j = pageLabels.length; j < 32; j++) {
+                    html += `<div class="label" style="border:1px dashed #ddd; background:#fafafa;"></div>`;
+                  }
+                  html += `</div>`;
                 }
 
-                htmlContent += '</body></html>';
+                let container = document.getElementById('pdf-labels-container');
+                if (!container) {
+                  container = document.createElement('div');
+                  container.id = 'pdf-labels-container';
+                  container.style.position = 'fixed';
+                  container.style.top = '-10000px';
+                  container.style.left = '-10000px';
+                  container.style.width = '210mm';
+                  container.style.height = '297mm';
+                  container.style.background = 'white';
+                  document.body.appendChild(container);
+                }
+                container.innerHTML = '';
 
-                // פתח חלון חדש עם המדבקות
-                const printWindow = window.open('', '_blank');
-                printWindow.document.write(htmlContent);
-                printWindow.document.close();
-                
-                // המתן להטענה ואז הצג דיאלוג הדפסה
-                printWindow.onload = function() {
-                    setTimeout(() => {
-                        printWindow.print();
-                    }, 500);
+                // צור div פנימי עם ה-HTML וה-style
+                const pdfContent = document.createElement('div');
+                pdfContent.innerHTML = html;
+                container.appendChild(pdfContent);
+
+                const opt = {
+                  margin:       0,
+                  filename:     'מדבקות_קייטרינג.pdf',
+                  image:        { type: 'jpeg', quality: 0.98 },
+                  html2canvas:  { scale: 2, useCORS: true },
+                  jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                  pagebreak:    { mode: ['css', 'legacy'] }
                 };
+                html2pdf().set(opt).from(pdfContent).save();
             };
 
             const addNewProduct = () => {
@@ -775,7 +768,7 @@
                             <li>4. <strong>תוצאות:</strong> צפה בתוצאות בטאב "תוצאות", ייצא לאקסל או ייצא מדבקות</li>
                         </ol>
                         <p className="text-xs text-gray-500 mt-2">
-                            <strong>מדבקות:</strong> פותח חלון הדפסה חדש עם המדבקות - ניתן לשמור כ-PDF או להדפיס
+                            <strong>מדבקות מתוקנות:</strong> מדבקה אחת לכל אתר עם שמות מלאים, כמות מנות מקור ושוליים עליונים ותחתונים של 1 ס"מ
                         </p>
                     </div>
                 </div>
